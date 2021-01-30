@@ -1250,6 +1250,7 @@
     <ClInclude Include="..\..\include\etl\atomic\atomic_std.h" />
     <ClInclude Include="..\..\include\etl\basic_format_spec.h" />
     <ClInclude Include="..\..\include\etl\basic_string_stream.h" />
+    <ClInclude Include="..\..\include\etl\bip_buffer_spsc_atomic.h" />
     <ClInclude Include="..\..\include\etl\bit_stream.h" />
     <ClInclude Include="..\..\include\etl\bresenham_line.h" />
     <ClInclude Include="..\..\include\etl\buffer_descriptors.h" />
