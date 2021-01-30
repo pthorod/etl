@@ -147,6 +147,19 @@ namespace etl
   };
 
   //***************************************************************************
+  /// Exception for incompatible order state list.
+  //***************************************************************************
+  class fsm_state_list_order_exception : public etl::fsm_exception
+  {
+  public:
+
+    fsm_state_list_order_exception(string_type file_name_, numeric_type line_number_)
+      : etl::fsm_exception(ETL_ERROR_TEXT("fsm:state list order", ETL_FILE"D"), file_name_, line_number_)
+    {
+    }
+  };
+
+  //***************************************************************************
   /// Interface class for FSM states.
   //***************************************************************************
   class ifsm_state
@@ -223,8 +236,10 @@ namespace etl
     /// Constructor.
     //*******************************************
     fsm(etl::message_router_id_t id)
-      : imessage_router(id),
-        p_state(ETL_NULLPTR)
+      : imessage_router(id)
+      , p_state(ETL_NULLPTR)
+      , state_list(ETL_NULLPTR)
+      , number_of_states(0U)
     {
     }
 
@@ -234,14 +249,15 @@ namespace etl
     template <typename TSize>
     void set_states(etl::ifsm_state** p_states, TSize size)
     {
-      state_list       = p_states;
+      state_list = p_states;
       number_of_states = etl::fsm_state_id_t(size);
 
-      ETL_ASSERT((number_of_states > 0), ETL_ERROR(etl::fsm_state_list_exception));
+      ETL_ASSERT(number_of_states > 0, ETL_ERROR(etl::fsm_state_list_exception));
 
       for (etl::fsm_state_id_t i = 0; i < size; ++i)
       {
-        ETL_ASSERT((state_list[i] != ETL_NULLPTR), ETL_ERROR(etl::fsm_null_state_exception));
+        ETL_ASSERT(state_list[i] != ETL_NULLPTR, ETL_ERROR(etl::fsm_null_state_exception));
+        ETL_ASSERT(state_list[i]->get_state_id() == i, ETL_ERROR(etl::fsm_state_list_order_exception));
         state_list[i]->set_fsm_context(*this);
       }
     }
@@ -279,27 +295,7 @@ namespace etl
     //*******************************************
     /// Top level message handler for the FSM.
     //*******************************************
-    void receive(const etl::imessage& message)
-    {
-      static etl::null_message_router nmr;
-      receive(nmr, message);
-    }
-
-    //*******************************************
-    /// Top level message handler for the FSM.
-    //*******************************************
-    void receive(imessage_router& source, etl::message_router_id_t destination_router_id, const etl::imessage& message)
-    {
-      if ((destination_router_id == get_message_router_id()) || (destination_router_id == imessage_router::ALL_MESSAGE_ROUTERS))
-      {
-        receive(source, message);
-      }
-    }
-
-    //*******************************************
-    /// Top level message handler for the FSM.
-    //*******************************************
-    void receive(etl::imessage_router& source, const etl::imessage& message)
+    void receive(etl::imessage_router& source, const etl::imessage& message) ETL_OVERRIDE
     {
         etl::fsm_state_id_t next_state_id = p_state->process_event(source, message);
         ETL_ASSERT(next_state_id < number_of_states, ETL_ERROR(etl::fsm_state_id_exception));
@@ -329,7 +325,7 @@ namespace etl
     /// Does this FSM accept the message id?
     /// Yes, it accepts everything!
     //*******************************************
-    bool accepts(etl::message_id_t) const
+    bool accepts(etl::message_id_t) const ETL_OVERRIDE
     {
       return true;
     }
@@ -454,7 +450,7 @@ namespace etl
   cog.outl("  etl::fsm_state_id_t process_event(etl::imessage_router& source, const etl::imessage& message)")
   cog.outl("  {")
   cog.outl("    etl::fsm_state_id_t new_state_id;")
-  cog.outl("    etl::message_id_t event_id = message.message_id;")
+  cog.outl("    etl::message_id_t event_id = message.get_message_id();")
   cog.outl("")
   cog.outl("    switch (event_id)")
   cog.outl("    {")
@@ -531,7 +527,7 @@ namespace etl
       cog.outl("  etl::fsm_state_id_t process_event(etl::imessage_router& source, const etl::imessage& message)")
       cog.outl("  {")
       cog.outl("    etl::fsm_state_id_t new_state_id;")
-      cog.outl("    etl::message_id_t event_id = message.message_id;")
+      cog.outl("    etl::message_id_t event_id = message.get_message_id();")
       cog.outl("")
       cog.outl("    switch (event_id)")
       cog.outl("    {")

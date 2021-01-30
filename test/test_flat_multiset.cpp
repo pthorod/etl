@@ -162,23 +162,6 @@ namespace
   typedef std::multiset<D3> Compare3;
   typedef std::multiset<D4> Compare4;
 
-
-  //*************************************************************************
-  std::ostream& operator <<(std::ostream& os, DataNDC::iterator itr)
-  {
-    os << *itr;
-
-    return os;
-  }
-
-  //*************************************************************************
-  std::ostream& operator <<(std::ostream& os, DataNDC::const_iterator itr)
-  {
-    os << *itr;
-
-    return os;
-  }
-
   SUITE(test_flat_multiset)
   {
     NDC NX = NDC("@");
@@ -261,6 +244,24 @@ namespace
       CHECK_EQUAL(data.max_size(), SIZE);
       CHECK(data.begin() == data.end());
     }
+
+#if ETL_USING_STL && !defined(ETL_TEMPLATE_DEDUCTION_GUIDE_TESTS_DISABLED)
+    //*************************************************************************
+    TEST(test_cpp17_deduced_constructor)
+    {
+      etl::flat_multiset data{ N0, N1, N2, N3, N4, N5, N6, N7, N8, N9 };
+      etl::flat_multiset<NDC, 10U> check = { N0, N1, N2, N3, N4, N5, N6, N7, N8, N9 };
+
+      CHECK(!data.empty());
+      CHECK(data.full());
+      CHECK(data.begin() != data.end());
+      CHECK_EQUAL(10U, data.size());
+      CHECK_EQUAL(0U, data.available());
+      CHECK_EQUAL(10U, data.capacity());
+      CHECK_EQUAL(10U, data.max_size());
+      CHECK(data == check);
+    }
+#endif
 
     //*************************************************************************
     TEST(test_destruct_via_iflat_multiset)

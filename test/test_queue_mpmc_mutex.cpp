@@ -80,13 +80,6 @@ namespace
 
   using ItemM = TestDataM<int>;
 
-//  std::ostream& operator <<(std::ostream& os, const Data& data)
-//  {
-//    os << data.a << " " << data.b << " " << data.c << " " << data.d;
-//
-//    return os;
-//  }
-
   SUITE(test_queue_mpmc_mutex)
   {
     //*************************************************************************
@@ -171,16 +164,16 @@ namespace
 
       ItemM pr(0);
 
-      queue.pop(std::move(pr));
+      queue.pop(pr);
       CHECK_EQUAL(1, pr.value);
 
-      queue.pop(std::move(pr));
+      queue.pop(pr);
       CHECK_EQUAL(2, pr.value);
 
-      queue.pop(std::move(pr));
+      queue.pop(pr);
       CHECK_EQUAL(3, pr.value);
 
-      queue.pop(std::move(pr));
+      queue.pop(pr);
       CHECK_EQUAL(4, pr.value);
     }
 

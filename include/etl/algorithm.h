@@ -53,6 +53,8 @@ SOFTWARE.
   #include <functional>
 #endif
 
+#include "private/minmax_push.h"
+
 namespace etl
 {
   // Declare prototypes of the ETL's sort functions
@@ -789,6 +791,15 @@ namespace etl
 
     return (memcmp(first1, first2, sizeof(value_t) * (last1 - first1)) == 0);
   }
+
+  template <typename TIterator1, typename TIterator2>
+  ETL_NODISCARD
+    bool equal(TIterator1 first1, TIterator1 last1, TIterator2 first2, TIterator2 last2)
+  {
+    return (etl::distance(first1, last1) == etl::distance(first2, last2)) &&
+            etl::equal(first1, last1, first2);
+  }
+
 #else
   //***************************************************************************
   // equal
@@ -798,6 +809,23 @@ namespace etl
   {
     return std::equal(first1, last1, first2);
   }
+
+#if ETL_CPP14_SUPPORTED
+  template <typename TIterator1, typename TIterator2>
+  ETL_NODISCARD
+    bool equal(TIterator1 first1, TIterator1 last1, TIterator2 first2, TIterator2 last2)
+  {
+    return std::equal(first1, last1, first2, last2);
+  }
+#else
+  template <typename TIterator1, typename TIterator2>
+  ETL_NODISCARD
+  bool equal(TIterator1 first1, TIterator1 last1, TIterator2 first2, TIterator2 last2)
+  {
+    return (etl::distance(first1, last1) == etl::distance(first2, last2)) &&
+            etl::equal(first1, last1, first2);
+  }
+#endif
 #endif
 
 #if ETL_NOT_USING_STL
@@ -931,6 +959,29 @@ namespace etl
   ETL_CONSTEXPR const T& max(const T& a, const T& b)
   {
     return std::max(a, b);
+  }
+#endif
+
+#if ETL_NOT_USING_STL
+  //***************************************************************************
+  // for_each
+  template <typename TIterator, typename TUnaryOperation>
+  ETL_CONSTEXPR14 TUnaryOperation for_each(TIterator first, TIterator last, TUnaryOperation unary_operation)
+  {
+    while (first != last)
+    {
+      unary_operation(*first++);
+    }
+
+    return unary_operation;
+  }
+#else
+  //***************************************************************************
+  // for_each
+  template <typename TIterator, typename TUnaryOperation>
+  ETL_CONSTEXPR14 TUnaryOperation for_each(TIterator first, TIterator last, TUnaryOperation unary_operation)
+  {
+    return std::for_each(first, last, unary_operation);
   }
 #endif
 
@@ -3390,5 +3441,7 @@ namespace etl
   }
 #endif
 }
+
+#include "private/minmax_pop.h"
 
 #endif

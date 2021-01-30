@@ -49,7 +49,7 @@ SOFTWARE.
 
 namespace etl
 {
-  static ETL_CONST_OR_CONSTEXPR size_t dynamic_extent = etl::integral_limits<size_t>::max;
+  static ETL_CONSTANT size_t dynamic_extent = etl::integral_limits<size_t>::max;
 
   //***************************************************************************
   /// Array view.
@@ -71,7 +71,7 @@ namespace etl
     typedef ETL_OR_STD::reverse_iterator<iterator>       reverse_iterator;
     typedef ETL_OR_STD::reverse_iterator<const_iterator> const_reverse_iterator;
 
-    static ETL_CONST_OR_CONSTEXPR size_t extent = EXTENT;
+    static ETL_CONSTANT size_t extent = EXTENT;
 
     //*************************************************************************
     /// Default constructor.
@@ -87,7 +87,7 @@ namespace etl
     /// data() and size() member functions.
     //*************************************************************************
     template <typename TSpan>
-    ETL_CONSTEXPR explicit span(TSpan& a) ETL_NOEXCEPT
+    ETL_CONSTEXPR span(TSpan& a) ETL_NOEXCEPT
       : mbegin(a.data())
       , mend(a.data() + a.size())
     {
@@ -98,7 +98,7 @@ namespace etl
     /// data() and size() member functions.
     //*************************************************************************
     template <typename TSpan>
-    ETL_CONSTEXPR explicit span(const TSpan& a) ETL_NOEXCEPT
+    ETL_CONSTEXPR span(const TSpan& a) ETL_NOEXCEPT
       : mbegin(a.data())
       , mend(a.data() + a.size())
     {
@@ -128,7 +128,7 @@ namespace etl
     /// Construct from C array
     //*************************************************************************
     template<const size_t ARRAY_SIZE>
-    ETL_CONSTEXPR explicit span(element_type(&begin_)[ARRAY_SIZE]) ETL_NOEXCEPT
+    ETL_CONSTEXPR span(element_type(&begin_)[ARRAY_SIZE]) ETL_NOEXCEPT
       : mbegin(begin_)
       , mend(begin_ + ARRAY_SIZE)
     {
@@ -259,12 +259,28 @@ namespace etl
     }
 
     //*************************************************************************
+    /// Obtains a span that is a view over the first count elements of this span.
+    //*************************************************************************
+    ETL_CONSTEXPR etl::span<element_type, etl::dynamic_extent> first(size_t count) const
+    {
+      return etl::span<element_type, etl::dynamic_extent>(mbegin, mbegin + count);
+    }
+
+    //*************************************************************************
     /// Obtains a span that is a view over the last COUNT elements of this span.
     //*************************************************************************
     template <const size_t COUNT>
     ETL_CONSTEXPR etl::span<element_type, COUNT> last() const
     {
       return etl::span<element_type, COUNT>(mend - COUNT, mend);
+    }
+
+    //*************************************************************************
+    /// Obtains a span that is a view over the last count elements of this span.
+    //*************************************************************************
+    ETL_CONSTEXPR etl::span<element_type, etl::dynamic_extent> last(size_t count) const
+    {
+      return etl::span<element_type, etl::dynamic_extent>(mend - count, mend);
     }
 
     //*************************************************************************
@@ -314,6 +330,24 @@ namespace etl
   {
     return (lhs.begin() == rhs.begin()) && (lhs.end() == rhs.end());
   }
+
+  //*************************************************************************
+/// Template deduction guides.
+//*************************************************************************
+#if ETL_CPP17_SUPPORTED
+  template <typename TArray>
+  span(TArray& a)
+    ->span<typename TArray::value_type>;
+
+  template <typename TIterator>
+  span(const TIterator begin_, const TIterator end_)
+    ->span<etl::remove_pointer_t<TIterator>>;
+
+  template <typename TIterator,
+            typename TSize>
+    span(const TIterator begin_, const TSize size_)
+    ->span<etl::remove_pointer_t<TIterator>>;
+#endif 
 
   //*************************************************************************
   /// Hash function.

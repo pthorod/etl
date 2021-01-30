@@ -76,30 +76,6 @@ using Data_const_iterator         = Data::const_iterator;
 using Compare_Data_iterator       = Compare_Data::iterator;
 using Compare_Data_const_iterator = Compare_Data::const_iterator;
 
-//*************************************************************************
-static std::ostream& operator << (std::ostream& os, const Data_iterator& it)
-{
-  os << (*it);
-
-  return os;
-}
-
-//*************************************************************************
-static std::ostream& operator << (std::ostream& os, const Data_const_iterator& it)
-{
-  os << (*it);
-
-  return os;
-}
-
-//*************************************************************************
-static std::ostream& operator << (std::ostream& os, const Compare_Data_iterator& it)
-{
-  os << (*it);
-
-  return os;
-}
-
 namespace
 {
   SUITE(test_multiset)
@@ -233,6 +209,24 @@ namespace
       CHECK_EQUAL(data.max_size(), MAX_SIZE);
       CHECK(data.begin() == data.end());
     }
+
+#if ETL_USING_STL && !defined(ETL_TEMPLATE_DEDUCTION_GUIDE_TESTS_DISABLED)
+    //*************************************************************************
+    TEST(test_cpp17_deduced_constructor)
+    {
+      etl::multiset data{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+      etl::multiset<int, 10U> check = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+      CHECK(!data.empty());
+      CHECK(data.full());
+      CHECK(data.begin() != data.end());
+      CHECK_EQUAL(10U, data.size());
+      CHECK_EQUAL(0U, data.available());
+      CHECK_EQUAL(10U, data.capacity());
+      CHECK_EQUAL(10U, data.max_size());
+      CHECK(data == check);
+    }
+#endif
 
     //*************************************************************************
     TEST_FIXTURE(SetupFixture, test_copy_constructor)

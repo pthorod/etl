@@ -34,17 +34,11 @@ SOFTWARE.
 #include <stddef.h>
 #include <stdint.h>
 
-#include <new>
-
 #include "platform.h"
-
 #include "algorithm.h"
 #include "iterator.h"
 #include "utility.h"
-
 #include "container.h"
-#include "alignment.h"
-#include "array.h"
 #include "memory.h"
 #include "exception.h"
 #include "error_handler.h"
@@ -52,6 +46,7 @@ SOFTWARE.
 #include "algorithm.h"
 #include "type_traits.h"
 #include "iterator.h"
+#include "placement_new.h"
 
 #if ETL_CPP11_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
   #include <initializer_list>
@@ -187,6 +182,15 @@ namespace etl
     }
 
     //*************************************************************************
+    /// Returns the maximum possible size of the deque.
+    ///\return The maximum size of the deque.
+    //*************************************************************************
+    size_type capacity() const
+    {
+      return CAPACITY;
+    }
+
+    //*************************************************************************
     /// Returns the remaining capacity.
     ///\return The remaining capacity.
     //*************************************************************************
@@ -202,8 +206,8 @@ namespace etl
     //*************************************************************************
     deque_base(size_t max_size_, size_t buffer_size_)
       : current_size(0),
-        CAPACITY(max_size_),
-        BUFFER_SIZE(buffer_size_)
+      CAPACITY(max_size_),
+      BUFFER_SIZE(buffer_size_)
     {
     }
 
@@ -232,12 +236,12 @@ namespace etl
 
     typedef T        value_type;
     typedef size_t   size_type;
-    typedef T&       reference;
+    typedef T& reference;
     typedef const T& const_reference;
 #if ETL_CPP11_SUPPORTED
-    typedef T&&      rvalue_reference;
+    typedef T&& rvalue_reference;
 #endif
-    typedef T*       pointer;
+    typedef T* pointer;
     typedef const T* const_pointer;
     typedef typename etl::iterator_traits<pointer>::difference_type difference_type;
 
@@ -256,10 +260,12 @@ namespace etl
     //*************************************************************************
     /// Iterator
     //*************************************************************************
-    struct iterator : public etl::iterator<ETL_OR_STD::random_access_iterator_tag, T>
+    class iterator : public etl::iterator<ETL_OR_STD::random_access_iterator_tag, T>
     {
+    public:
+
       friend class ideque;
-      friend struct const_iterator;
+      friend class const_iterator;
 
       //***************************************************
       iterator()
@@ -280,8 +286,8 @@ namespace etl
       //***************************************************
       iterator& operator =(const iterator& other)
       {
-        index    = other.index;
-        p_deque  = other.p_deque;
+        index = other.index;
+        p_deque = other.p_deque;
         p_buffer = other.p_buffer;
 
         return *this;
@@ -410,8 +416,8 @@ namespace etl
       {
         const difference_type lhs_index = lhs.get_index();
         const difference_type rhs_index = rhs.get_index();
-        const difference_type reference_index = lhs.get_deque().begin().get_index();
-        const size_t buffer_size = lhs.get_deque().max_size() + 1;
+        const difference_type reference_index = lhs.container().begin().get_index();
+        const size_t buffer_size = lhs.container().max_size() + 1;
 
         const difference_type lhs_distance = (lhs_index < reference_index) ? buffer_size + lhs_index - reference_index : lhs_index - reference_index;
         const difference_type rhs_distance = (rhs_index < reference_index) ? buffer_size + rhs_index - reference_index : rhs_index - reference_index;
@@ -444,7 +450,7 @@ namespace etl
       }
 
       //***************************************************
-      ideque& get_deque() const
+      ideque& container() const
       {
         return *p_deque;
       }
@@ -487,15 +493,17 @@ namespace etl
       }
 
       difference_type index;
-      ideque*         p_deque;
+      ideque* p_deque;
       pointer         p_buffer;
     };
 
     //*************************************************************************
     /// Const Iterator
     //*************************************************************************
-    struct const_iterator : public etl::iterator<ETL_OR_STD::random_access_iterator_tag, const T>
+    class const_iterator : public etl::iterator<ETL_OR_STD::random_access_iterator_tag, const T>
     {
+    public:
+
       friend class ideque;
 
       //***************************************************
@@ -525,8 +533,8 @@ namespace etl
       //***************************************************
       const_iterator& operator =(const const_iterator& other)
       {
-        index    = other.index;
-        p_deque  = other.p_deque;
+        index = other.index;
+        p_deque = other.p_deque;
         p_buffer = other.p_buffer;
 
         return *this;
@@ -534,8 +542,8 @@ namespace etl
 
       const_iterator& operator =(const typename ideque::iterator& other)
       {
-        index    = other.index;
-        p_deque  = other.p_deque;
+        index = other.index;
+        p_deque = other.p_deque;
         p_buffer = other.p_buffer;
 
         return *this;
@@ -654,8 +662,8 @@ namespace etl
       {
         const difference_type lhs_index = lhs.get_index();
         const difference_type rhs_index = rhs.get_index();
-        const difference_type reference_index = lhs.get_deque().begin().get_index();
-        const size_t buffer_size = lhs.get_deque().max_size() + 1;
+        const difference_type reference_index = lhs.container().begin().get_index();
+        const size_t buffer_size = lhs.container().max_size() + 1;
 
         const difference_type lhs_distance = (lhs_index < reference_index) ? buffer_size + lhs_index - reference_index : lhs_index - reference_index;
         const difference_type rhs_distance = (rhs_index < reference_index) ? buffer_size + rhs_index - reference_index : rhs_index - reference_index;
@@ -688,7 +696,7 @@ namespace etl
       }
 
       //***************************************************
-      ideque& get_deque() const
+      ideque& container() const
       {
         return *p_deque;
       }
@@ -729,7 +737,7 @@ namespace etl
       }
 
       difference_type index;
-      ideque*         p_deque;
+      ideque* p_deque;
       pointer         p_buffer;
     };
 
@@ -1091,7 +1099,7 @@ namespace etl
         p = etl::addressof(*_begin);
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _begin;
+          position = _begin;
       }
       else if (insert_position == end())
       {
@@ -1099,7 +1107,7 @@ namespace etl
         ++_end;
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _end - 1;
+          position = _end - 1;
       }
       else
       {
@@ -1158,7 +1166,7 @@ namespace etl
         p = etl::addressof(*_begin);
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _begin;
+          position = _begin;
       }
       else if (insert_position == end())
       {
@@ -1166,7 +1174,7 @@ namespace etl
         ++_end;
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _end - 1;
+          position = _end - 1;
       }
       else
       {
@@ -1223,7 +1231,7 @@ namespace etl
         p = etl::addressof(*_begin);
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _begin;
+          position = _begin;
       }
       else if (insert_position == end())
       {
@@ -1231,7 +1239,7 @@ namespace etl
         ++_end;
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _end - 1;
+          position = _end - 1;
       }
       else
       {
@@ -1288,7 +1296,7 @@ namespace etl
         p = etl::addressof(*_begin);
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _begin;
+          position = _begin;
       }
       else if (insert_position == end())
       {
@@ -1296,7 +1304,7 @@ namespace etl
         ++_end;
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _end - 1;
+          position = _end - 1;
       }
       else
       {
@@ -1353,7 +1361,7 @@ namespace etl
         p = etl::addressof(*_begin);
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _begin;
+          position = _begin;
       }
       else if (insert_position == end())
       {
@@ -1361,7 +1369,7 @@ namespace etl
         ++_end;
         ++current_size;
         ETL_INCREMENT_DEBUG_COUNT
-        position = _end - 1;
+          position = _end - 1;
       }
       else
       {
@@ -2086,7 +2094,7 @@ namespace etl
     //*************************************************************************
     ideque(pointer p_buffer_, size_t max_size_, size_t buffer_size_)
       : deque_base(max_size_, buffer_size_),
-        p_buffer(p_buffer_)
+      p_buffer(p_buffer_)
     {
     }
 
@@ -2097,7 +2105,7 @@ namespace etl
     {
       if ETL_IF_CONSTEXPR(etl::is_trivially_destructible<T>::value)
       {
-        current_size    = 0;
+        current_size = 0;
         ETL_RESET_DEBUG_COUNT
       }
       else
@@ -2109,7 +2117,7 @@ namespace etl
       }
 
       _begin = iterator(0, *this, p_buffer);
-      _end   = iterator(0, *this, p_buffer);
+      _end = iterator(0, *this, p_buffer);
     }
 
     //*************************************************************************
@@ -2120,7 +2128,7 @@ namespace etl
       p_buffer = p_buffer_;
 
       _begin = iterator(_begin.index, *this, p_buffer);
-      _end   = iterator(_end.index,   *this, p_buffer);
+      _end = iterator(_end.index, *this, p_buffer);
     }
 
     iterator _begin;   ///Iterator to the _begin item in the deque.
@@ -2229,7 +2237,7 @@ namespace etl
       (*_begin).~T();
       --current_size;
       ETL_DECREMENT_DEBUG_COUNT
-      ++_begin;
+        ++_begin;
     }
 
     //*********************************************************************
@@ -2262,8 +2270,8 @@ namespace etl
     static difference_type distance(const TIterator& other)
     {
       const difference_type index = other.get_index();
-      const difference_type reference_index = other.get_deque()._begin.index;
-      const size_t buffer_size = other.get_deque().BUFFER_SIZE;
+      const difference_type reference_index = other.container()._begin.index;
+      const size_t buffer_size = other.container().BUFFER_SIZE;
 
       if (index < reference_index)
       {
@@ -2306,18 +2314,18 @@ namespace etl
   {
   public:
 
-    static const size_t MAX_SIZE = MAX_SIZE_;
+    static ETL_CONSTANT size_t MAX_SIZE = MAX_SIZE_;
 
   private:
 
-    static const size_t BUFFER_SIZE = MAX_SIZE + 1;
+    static ETL_CONSTANT size_t BUFFER_SIZE = MAX_SIZE + 1;
 
   public:
 
     typedef T        value_type;
-    typedef T*       pointer;
+    typedef T* pointer;
     typedef const T* const_pointer;
-    typedef T&       reference;
+    typedef T& reference;
     typedef const T& const_reference;
     typedef size_t   size_type;
     typedef typename etl::iterator_traits<pointer>::difference_type difference_type;
@@ -2326,7 +2334,7 @@ namespace etl
     /// Default constructor.
     //*************************************************************************
     deque()
-      : etl::ideque<T>(reinterpret_cast<T*>(&buffer[0]), MAX_SIZE, BUFFER_SIZE)
+      : etl::ideque<T>(reinterpret_cast<T*>(buffer.raw), MAX_SIZE, BUFFER_SIZE)
     {
       this->initialise();
     }
@@ -2343,7 +2351,7 @@ namespace etl
     /// Copy constructor.
     //*************************************************************************
     deque(const deque& other)
-      : etl::ideque<T>(reinterpret_cast<T*>(&buffer[0]), MAX_SIZE, BUFFER_SIZE)
+      : etl::ideque<T>(reinterpret_cast<T*>(buffer.raw), MAX_SIZE, BUFFER_SIZE)
     {
       if (this != &other)
       {
@@ -2356,7 +2364,7 @@ namespace etl
     /// Move constructor.
     //*************************************************************************
     deque(deque&& other)
-      : etl::ideque<T>(reinterpret_cast<T*>(&buffer[0]), MAX_SIZE, BUFFER_SIZE)
+      : etl::ideque<T>(reinterpret_cast<T*>(buffer.raw), MAX_SIZE, BUFFER_SIZE)
     {
       if (this != &other)
       {
@@ -2375,9 +2383,9 @@ namespace etl
     //*************************************************************************
     /// Assigns data to the deque.
     //*************************************************************************
-    template <typename TIterator>
+    template <typename TIterator, typename = typename etl::enable_if<!etl::is_integral<TIterator>::value, void>::type>
     deque(TIterator begin_, TIterator end_)
-      : etl::ideque<T>(reinterpret_cast<T*>(&buffer[0]), MAX_SIZE, BUFFER_SIZE)
+      : etl::ideque<T>(reinterpret_cast<T*>(buffer.raw), MAX_SIZE, BUFFER_SIZE)
     {
       this->assign(begin_, end_);
     }
@@ -2386,7 +2394,7 @@ namespace etl
     /// Assigns data to the deque.
     //*************************************************************************
     explicit deque(size_t n, const_reference value = value_type())
-      : etl::ideque<T>(reinterpret_cast<T*>(&buffer[0]), MAX_SIZE, BUFFER_SIZE)
+      : etl::ideque<T>(reinterpret_cast<T*>(buffer.raw), MAX_SIZE, BUFFER_SIZE)
     {
       this->assign(n, value);
     }
@@ -2396,7 +2404,7 @@ namespace etl
     /// Construct from initializer_list.
     //*************************************************************************
     deque(std::initializer_list<T> init)
-      : ideque<T>(reinterpret_cast<T*>(&buffer[0]), MAX_SIZE, BUFFER_SIZE)
+      : ideque<T>(reinterpret_cast<T*>(buffer.raw), MAX_SIZE, BUFFER_SIZE)
     {
       this->assign(init.begin(), init.end());
     }
@@ -2448,14 +2456,23 @@ namespace etl
       ETL_ASSERT(etl::is_trivially_copyable<T>::value, ETL_ERROR(etl::deque_incompatible_type));
 #endif
 
-      etl::ideque<T>::repair_buffer(reinterpret_cast<T*>(&buffer[0]));
+      etl::ideque<T>::repair_buffer(reinterpret_cast<T*>(buffer.raw));
     }
 
   private:
 
     /// The uninitialised buffer of T used in the deque.
-    typename etl::aligned_storage<sizeof(T), etl::alignment_of<T>::value>::type buffer[BUFFER_SIZE];
+    etl::uninitialized_buffer_of<T, BUFFER_SIZE> buffer;
   };
+
+  //*************************************************************************
+  /// Template deduction guides.
+  //*************************************************************************
+#if ETL_CPP17_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
+  template <typename T, typename... Ts>
+  deque(T, Ts...)
+    ->deque<etl::enable_if_t<(etl::is_same_v<T, Ts> && ...), T>, 1U + sizeof...(Ts)>;
+#endif  
 
   //***************************************************************************
   /// Equal operator.
@@ -2494,9 +2511,9 @@ namespace etl
   bool operator <(const etl::ideque<T>& lhs, const etl::ideque<T>& rhs)
   {
     return etl::lexicographical_compare(lhs.begin(),
-                                           lhs.end(),
-                                           rhs.begin(),
-                                           rhs.end());
+      lhs.end(),
+      rhs.begin(),
+      rhs.end());
   }
 
   //***************************************************************************

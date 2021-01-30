@@ -33,14 +33,10 @@ SOFTWARE.
 
 #include <stddef.h>
 
-#include <new>
-
 #include "platform.h"
-
 #include "algorithm.h"
 #include "iterator.h"
 #include "functional.h"
-
 #include "container.h"
 #include "pool.h"
 #include "exception.h"
@@ -51,6 +47,9 @@ SOFTWARE.
 #include "algorithm.h"
 #include "memory.h"
 #include "iterator.h"
+#include "static_assert.h"
+#include "parameter_type.h"
+#include "placement_new.h"
 
 #if ETL_CPP11_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
   #include <initializer_list>
@@ -229,6 +228,14 @@ namespace etl
     /// Gets the maximum possible size of the list.
     //*************************************************************************
     size_type max_size() const
+    {
+      return MAX_SIZE;
+    }
+
+    //*************************************************************************
+    /// Gets the maximum possible size of the list.
+    //*************************************************************************
+    size_type capacity() const
     {
       return MAX_SIZE;
     }
@@ -523,7 +530,7 @@ namespace etl
         return temp;
       }
 
-      iterator operator =(const iterator& other)
+      iterator& operator =(const iterator& other)
       {
         p_node = other.p_node;
         return *this;
@@ -634,7 +641,7 @@ namespace etl
         return temp;
       }
 
-      const_iterator operator =(const const_iterator& other)
+      const_iterator& operator =(const const_iterator& other)
       {
         p_node = other.p_node;
         return *this;
@@ -2023,6 +2030,8 @@ namespace etl
   {
   public:
 
+    ETL_STATIC_ASSERT((MAX_SIZE_ > 0U), "Zero capacity etl::list is not valid");
+
     static const size_t MAX_SIZE = MAX_SIZE_;
 
   public:
@@ -2109,7 +2118,7 @@ namespace etl
     //*************************************************************************
     /// Construct from range.
     //*************************************************************************
-    template <typename TIterator>
+    template <typename TIterator, typename = typename etl::enable_if<!etl::is_integral<TIterator>::value, void>::type>
     list(TIterator first, TIterator last)
       : ilist<T>(node_pool, MAX_SIZE, false)
     {
@@ -2159,10 +2168,19 @@ namespace etl
   };
 
   //*************************************************************************
+  /// Template deduction guides.
+  //*************************************************************************
+#if ETL_CPP17_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
+  template <typename T, typename... Ts>
+  list(T, Ts...)
+    ->list<etl::enable_if_t<(etl::is_same_v<T, Ts> && ...), T>, 1U + sizeof...(Ts)>;
+#endif 
+
+  //*************************************************************************
   /// A templated list implementation that uses a fixed size buffer.
   //*************************************************************************
   template <typename T>
-  class list<T, 0> : public etl::ilist<T>
+  class list_ext : public etl::ilist<T>
   {
   public:
 
@@ -2178,7 +2196,7 @@ namespace etl
     //*************************************************************************
     /// Default constructor.
     //*************************************************************************
-    list()
+    list_ext()
       : etl::ilist<T>(true)
     {
     }
@@ -2186,7 +2204,7 @@ namespace etl
     //*************************************************************************
     /// Default constructor.
     //*************************************************************************
-    explicit list(etl::ipool& node_pool)
+    explicit list_ext(etl::ipool& node_pool)
       : etl::ilist<T>(node_pool, node_pool.max_size(), true)
     {
     }
@@ -2194,7 +2212,7 @@ namespace etl
     //*************************************************************************
     /// Destructor.
     //*************************************************************************
-    ~list()
+    ~list_ext()
     {
       this->initialise();
     }
@@ -2202,7 +2220,7 @@ namespace etl
     //*************************************************************************
     /// Construct from size.
     //*************************************************************************
-    explicit list(size_t initial_size, etl::ipool& node_pool)
+    explicit list_ext(size_t initial_size, etl::ipool& node_pool)
       : etl::ilist<T>(node_pool, node_pool.max_size(), true)
     {
       this->assign(initial_size, T());
@@ -2211,7 +2229,7 @@ namespace etl
     //*************************************************************************
     /// Construct from size and value.
     //*************************************************************************
-    list(size_t initial_size, const T& value, etl::ipool& node_pool)
+    list_ext(size_t initial_size, const T& value, etl::ipool& node_pool)
       : etl::ilist<T>(node_pool, node_pool.max_size(), true)
     {
       this->assign(initial_size, value);
@@ -2220,7 +2238,7 @@ namespace etl
     //*************************************************************************
     /// Copy constructor. Implicit pool.
     //*************************************************************************
-    list(const list& other)
+    list_ext(const list_ext& other)
       : etl::ilist<T>(*other.p_node_pool, other.p_node_pool->max_size(), true)
     {
       if (this != &other)
@@ -2232,7 +2250,7 @@ namespace etl
     //*************************************************************************
     /// Copy constructor. Explicit pool.
     //*************************************************************************
-    list(const list& other, etl::ipool& node_pool)
+    list_ext(const list_ext& other, etl::ipool& node_pool)
       : etl::ilist<T>(node_pool, node_pool.max_size(), true)
     {
       if (this != &other)
@@ -2245,7 +2263,7 @@ namespace etl
     //*************************************************************************
     /// Move constructor. Implicit pool.
     //*************************************************************************
-    list(list&& other)
+    list_ext(list_ext&& other)
       : etl::ilist<T>(*other.p_node_pool, other.p_node_pool->max_size(), true)
     {
       this->move_container(etl::move(other));
@@ -2254,7 +2272,7 @@ namespace etl
     //*************************************************************************
     /// Move constructor. Explicit pool.
     //*************************************************************************
-    list(list&& other, etl::ipool& node_pool)
+    list_ext(list_ext&& other, etl::ipool& node_pool)
       : etl::ilist<T>(node_pool, node_pool.max_size(), true)
     {
       this->move_container(etl::move(other));
@@ -2264,8 +2282,8 @@ namespace etl
     //*************************************************************************
     /// Construct from range.
     //*************************************************************************
-    template <typename TIterator>
-    list(TIterator first, TIterator last, etl::ipool& node_pool)
+    template <typename TIterator, typename = typename etl::enable_if<!etl::is_integral<TIterator>::value, void>::type>
+    list_ext(TIterator first, TIterator last, etl::ipool& node_pool)
       : ilist<T>(node_pool, node_pool.max_size(), true)
     {
       this->assign(first, last);
@@ -2275,7 +2293,7 @@ namespace etl
     //*************************************************************************
     /// Construct from initializer_list.
     //*************************************************************************
-    list(std::initializer_list<T> init, etl::ipool& node_pool)
+    list_ext(std::initializer_list<T> init, etl::ipool& node_pool)
       : ilist<T>(node_pool, node_pool.max_size(), true)
     {
       this->assign(init.begin(), init.end());
@@ -2285,7 +2303,7 @@ namespace etl
     //*************************************************************************
     /// Assignment operator.
     //*************************************************************************
-    list& operator = (const list& rhs)
+    list_ext& operator = (const list_ext& rhs)
     {
       if (&rhs != this)
       {
@@ -2299,7 +2317,7 @@ namespace etl
     //*************************************************************************
     /// Assignment operator.
     //*************************************************************************
-    list& operator = (list&& rhs)
+    list_ext& operator = (list_ext&& rhs)
     {
       this->move_container(etl::move(rhs));
 

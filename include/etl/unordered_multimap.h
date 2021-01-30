@@ -33,8 +33,6 @@ SOFTWARE.
 
 #include <stddef.h>
 
-#include <new>
-
 #include "platform.h"
 #include "algorithm.h"
 #include "iterator.h"
@@ -53,6 +51,11 @@ SOFTWARE.
 #include "exception.h"
 #include "debug_count.h"
 #include "iterator.h"
+#include "placement_new.h"
+
+#if ETL_CPP11_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
+  #include <initializer_list>
+#endif
 
 #undef ETL_FILE
 #define ETL_FILE "25"
@@ -236,7 +239,7 @@ namespace etl
       }
 
       //*********************************
-      iterator operator =(const iterator& other)
+      iterator& operator =(const iterator& other)
       {
         pbuckets_end = other.pbuckets_end;
         pbucket = other.pbucket;
@@ -406,7 +409,7 @@ namespace etl
       }
 
       //*********************************
-      const_iterator operator =(const const_iterator& other)
+      const_iterator& operator =(const const_iterator& other)
       {
         pbuckets_end = other.pbuckets_end;
         pbucket = other.pbucket;
@@ -1136,6 +1139,14 @@ namespace etl
     }
 
     //*************************************************************************
+    /// Gets the maximum possible size of the unordered_multimap.
+    //*************************************************************************
+    size_type capacity() const
+    {
+      return pnodepool->max_size();
+    }
+
+    //*************************************************************************
     /// Checks to see if the unordered_multimap is empty.
     //*************************************************************************
     bool empty() const
@@ -1484,12 +1495,23 @@ namespace etl
     ///\param first The iterator to the first element.
     ///\param last  The iterator to the last element + 1.
     //*************************************************************************
-    template <typename TIterator>
+    template <typename TIterator, typename = typename etl::enable_if<!etl::is_integral<TIterator>::value, void>::type>
     unordered_multimap(TIterator first_, TIterator last_)
       : base(node_pool, buckets, MAX_BUCKETS)
     {
       base::assign(first_, last_);
     }
+
+#if ETL_CPP11_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
+    //*************************************************************************
+    /// Construct from initializer_list.
+    //*************************************************************************
+    unordered_multimap(std::initializer_list<ETL_OR_STD::pair<TKey, TValue>> init)
+      : base(node_pool, buckets, MAX_BUCKETS_)
+    {
+      base::assign(init.begin(), init.end());
+    }
+#endif
 
     //*************************************************************************
     /// Destructor.
@@ -1538,6 +1560,17 @@ namespace etl
     /// The buckets of node lists.
     etl::intrusive_forward_list<typename base::node_t> buckets[MAX_BUCKETS_];
   };
+
+  //*************************************************************************
+  /// Template deduction guides.
+  //*************************************************************************
+#if ETL_CPP17_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
+  template <typename T, typename... Ts>
+  unordered_multimap(T, Ts...)
+    ->unordered_multimap<etl::enable_if_t<(etl::is_same_v<T, Ts> && ...), typename T::first_type>,
+    typename T::second_type,
+    1U + sizeof...(Ts)>;
+#endif
 }
 
 #undef ETL_FILE

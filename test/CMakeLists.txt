@@ -3,6 +3,15 @@ project(etl_unit_tests)
 
 add_definitions(-DETL_DEBUG)
 
+option(NO_STL "No STL" OFF)
+
+if (NO_STL)
+	message(STATUS "Compiling for No STL")
+	add_definitions(-DETL_NO_STL)
+else()
+	message(STATUS "Compiling for STL")
+endif()
+
 if(NOT UnitTest++_FOUND)
   # Add unittest-cpp as an ExternalProject
   include(cmake/unit-test_external_project.cmake)
@@ -19,7 +28,6 @@ set(TEST_SOURCE_FILES
 	test_array.cpp
 	test_array_view.cpp
 	test_array_wrapper.cpp
-	test_atomic_gcc_sync.cpp
 	test_atomic_std.cpp
 	test_binary.cpp
 	test_bitset.cpp
@@ -27,9 +35,12 @@ set(TEST_SOURCE_FILES
 	test_bloom_filter.cpp
 	test_bresenham_line.cpp
 	test_bsd_checksum.cpp
+	test_buffer_descriptors.cpp
 	test_callback_service.cpp
 	test_callback_timer.cpp
 	test_checksum.cpp
+	test_circular_buffer.cpp
+    test_circular_buffer_external_buffer.cpp
 	test_compare.cpp
 	test_compiler_settings.cpp
 	test_constant.cpp
@@ -46,6 +57,8 @@ set(TEST_SOURCE_FILES
 	test_error_handler.cpp
 	test_exception.cpp
 	test_fixed_iterator.cpp
+	test_fixed_sized_memory_block_allocator.cpp
+	test_flags
 	test_flat_map.cpp
 	test_flat_multimap.cpp
 	test_flat_multiset.cpp
@@ -84,6 +97,7 @@ set(TEST_SOURCE_FILES
 	test_multimap.cpp
 	test_multiset.cpp
 	test_multi_array.cpp
+	test_multi_range.cpp
 	test_murmur3.cpp
 	test_numeric.cpp
 	test_observer.cpp
@@ -105,6 +119,8 @@ set(TEST_SOURCE_FILES
 	test_queue_spsc_isr_small.cpp
 	test_queue_spsc_locked.cpp
 	test_queue_spsc_locked_small.cpp
+	test_queue_lockable.cpp
+	test_queue_lockable_small.cpp
 	test_random.cpp
 	test_reference_flat_map.cpp
 	test_reference_flat_multimap.cpp
@@ -112,6 +128,7 @@ set(TEST_SOURCE_FILES
 	test_reference_flat_set.cpp
 	test_scaled_rounding.cpp
 	test_set.cpp
+	test_shared_message.cpp
 	test_smallest.cpp
 	test_span.cpp
 	test_stack.cpp

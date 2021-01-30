@@ -61,38 +61,6 @@ using Data_const_iterator         = Data::const_iterator;
 using Compare_Data_iterator       = Compare_Data::iterator;
 using Compare_Data_const_iterator = Compare_Data::const_iterator;
 
-//*************************************************************************
-static std::ostream& operator << (std::ostream& os, const Data_iterator& it)
-{
-  os << (*it).first << " " << (*it).second;
-
-  return os;
-}
-
-//*************************************************************************
-static std::ostream& operator << (std::ostream& os, const Data_const_iterator& it)
-{
-  os << (*it).first << " " << (*it).second;
-
-  return os;
-}
-
-//*************************************************************************
-static std::ostream& operator << (std::ostream& os, const Compare_Data_iterator& it)
-{
-  os << (*it).first << " " << (*it).second;
-
-  return os;
-}
-
-//*************************************************************************
-static std::ostream& operator << (std::ostream& os, const Compare_Data_const_iterator& it)
-{
-  os << (*it).first << " " << (*it).second;
-
-  return os;
-}
-
 namespace
 {
   SUITE(test_map)
@@ -224,6 +192,26 @@ namespace
       CHECK(data.max_size() == MAX_SIZE);
       CHECK(data.begin() == data.end());
     }
+
+#if ETL_USING_STL && !defined(ETL_TEMPLATE_DEDUCTION_GUIDE_TESTS_DISABLED)
+    //*************************************************************************
+    TEST(test_cpp17_deduced_constructor)
+    {
+      etl::map data{ std::pair<std::string, int>("0", 0), std::pair<std::string, int>("1", 1), std::pair<std::string, int>("2", 2), std::pair<std::string, int>("3", 3), std::pair<std::string, int>("4", 4), 
+                     std::pair<std::string, int>("5", 5), std::pair<std::string, int>("6", 6), std::pair<std::string, int>("7", 7), std::pair<std::string, int>("8", 8), std::pair<std::string, int>("9", 9) };
+      etl::map<std::string, int, 10U> check = { std::pair<std::string, int>("0", 0), std::pair<std::string, int>("1", 1), std::pair<std::string, int>("2", 2), std::pair<std::string, int>("3", 3), std::pair<std::string, int>("4", 4),
+                                                std::pair<std::string, int>("5", 5), std::pair<std::string, int>("6", 6), std::pair<std::string, int>("7", 7), std::pair<std::string, int>("8", 8), std::pair<std::string, int>("9", 9) };
+
+      CHECK(!data.empty());
+      CHECK(data.full());
+      CHECK(data.begin() != data.end());
+      CHECK_EQUAL(10U, data.size());
+      CHECK_EQUAL(0U, data.available());
+      CHECK_EQUAL(10U, data.capacity());
+      CHECK_EQUAL(10U, data.max_size());
+      CHECK(data == check);
+    }
+#endif
 
     //*************************************************************************
     TEST_FIXTURE(SetupFixture, test_copy_constructor)

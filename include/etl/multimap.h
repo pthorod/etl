@@ -33,14 +33,10 @@ SOFTWARE.
 
 #include <stddef.h>
 
-#include <new>
-
 #include "platform.h"
-
 #include "algorithm.h"
 #include "iterator.h"
 #include "functional.h"
-
 #include "container.h"
 #include "pool.h"
 #include "exception.h"
@@ -51,6 +47,7 @@ SOFTWARE.
 #include "parameter_type.h"
 #include "iterator.h"
 #include "utility.h"
+#include "placement_new.h"
 
 #if ETL_CPP11_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
   #include <initializer_list>
@@ -798,7 +795,7 @@ namespace etl
         return temp;
       }
 
-      iterator operator =(const iterator& other)
+      iterator& operator =(const iterator& other)
       {
         p_multimap = other.p_multimap;
         p_node = other.p_node;
@@ -924,7 +921,7 @@ namespace etl
         return temp;
       }
 
-      const_iterator operator =(const const_iterator& other)
+      const_iterator& operator =(const const_iterator& other)
       {
         p_multimap = other.p_multimap;
         p_node = other.p_node;
@@ -2033,7 +2030,6 @@ namespace etl
     {
     }
 #endif
-
   };
 
   //*************************************************************************
@@ -2092,7 +2088,7 @@ namespace etl
     ///\param first The iterator to the first element.
     ///\param last  The iterator to the last element + 1.
     //*************************************************************************
-    template <typename TIterator>
+    template <typename TIterator, typename = typename etl::enable_if<!etl::is_integral<TIterator>::value, void>::type>
     multimap(TIterator first, TIterator last)
       : etl::imultimap<TKey, TValue, TCompare>(node_pool, MAX_SIZE)
     {
@@ -2157,6 +2153,17 @@ namespace etl
     /// The pool of data nodes used for the multimap.
     etl::pool<typename etl::imultimap<TKey, TValue, TCompare>::Data_Node, MAX_SIZE> node_pool;
   };
+
+  //*************************************************************************
+  /// Template deduction guides.
+  //*************************************************************************
+#if ETL_CPP17_SUPPORTED && ETL_NOT_USING_STLPORT && ETL_USING_STL
+  template <typename T, typename... Ts>
+  multimap(T, Ts...)
+    ->multimap<etl::enable_if_t<(etl::is_same_v<T, Ts> && ...), typename T::first_type>,
+                typename T::second_type,
+                1U + sizeof...(Ts)>;
+#endif 
 
   //***************************************************************************
   /// Equal operator.
